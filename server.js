@@ -2,9 +2,13 @@ var fs = require("fs");
 var express = require("express");
 var path = require("path");
 var notes = [];
+var util = require("util");
+
+const readFileAsync = util.promisify(fs.readFile);
+const writeFileAsync = util.promisify(fs.writeFile);
 
 var app = express();
-var PORT = process.env.port || 3000;
+var PORT = process.env.port || 3004;
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -39,17 +43,21 @@ app.post("/api/notes", function(req, res) {
 });
 
 app.delete("/api/notes/:id", function(req, res) {
-    const remove = req.params.id;
-    const data = fs.readFileSync(__dirname + "/Develop/db/db.json");
-    const product = JSON.parse(data)
-
-    for (let i = 0; i < product.length; i++) {
-        if (product[i].id === remove) {
-            product.remove(product[i]);
-            console.log("Removed");
+    const remove = parseInt(req.params.id);
+    readFileAsync(__dirname + "/Develop/db/db.json", "utf-8").then(function(data) {
+        const notes = [].concat(JSON.parse(data));
+        const newNotesData = [];
+        for (let i = 0; i < notes.length; i++) {
+            if (remove !== notes[i].id) {
+                newNotesData.push(notes[i])
+            }
         }
-        //.splice?
-    }
+        return newNotesData
+    }).then(function(notes) {
+        writeFileAsync("./Develop/db/db.json", JSON.stringify(notes))
+        res.send("saved");
+    })
+
 })
 
 // Starts the server to begin listening
